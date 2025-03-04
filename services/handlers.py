@@ -46,7 +46,7 @@ async def echo_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     bill_tracker_repository.authenticate_user(os.getenv('USER_EMAIL'), os.getenv('USER_PASSWORD'))
 
     bill = Bill(
-        date=date_now,
+        date=date_now.strftime("%Y-%m-%d %H:%M:%S"),
         category=None, ## TODO: Obtener el valor de la foto
         medium=None, ## TODO: Obtener el valor de la foto
         amount=0, ## TODO: Obtener el valor de la foto

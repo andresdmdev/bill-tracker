@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+date_now = datetime.now()
+
 class BillStatus:
     """Enum representing the status of a bill."""
     Paid = 1
@@ -38,7 +40,7 @@ class BillMedium:
 class Bill:
     """Class representing a bill."""
     id: int
-    created_at: str = datetime.now()
+    created_at: str = date_now.strftime("%Y-%m-%d %H:%M:%S")
     created_by: str = "Lambda Function"
     date: str | None
     category: BillCategory | None
