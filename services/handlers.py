@@ -1,13 +1,16 @@
 """Telegram bot handlers for processing different types of messages and commands."""
 
+import logging
 import os
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from models.bill import Bill, BillStatus
-from repository.bill_tracker_repository import BillTrackerRepository
 from services.photo_service import PhotoService
+date_now = datetime.now()
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a welcome message when the command /start is issued."""
@@ -18,50 +21,51 @@ async def echo_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message text."""
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Not implemented")
 
-async def echo_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def process_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Process and store photos sent by users."""
+    start_time = date_now
+    logger.info("Procesando foto...")
     photo_service = PhotoService()
     last_photo = update.message.photo[len(update.message.photo) - 1]
+    response = { "msg": "Procesando foto...", "error": False, "error_msg": None }
 
     if not photo_service.get_data_photo_from_telegram(last_photo.file_id):
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="No se pudo obtener la foto desde telegram 😭")
+        response["error"] = True
+        response["error_msg"] = "No se pudo obtener la foto desde telegram 😭"
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response["error_msg"])
         return
-
-    folder_id = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
-
-    date_now = datetime.now()
 
     file_id = await photo_service.save_photo_to_google_drive(
-        photo_service.photo_base64,
-        folder_id,
-        filename=date_now.strftime("%Y-%m-%d"),
-        is_base64=True
-    )
+            photo_service.photo_base64,
+            os.getenv('GOOGLE_DRIVE_FOLDER_ID'),
+            is_base64=True
+        )
 
     if not file_id:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="No se pudo guardar la foto en google drive 😭")
-        return
+        response["error"] = True
+        response["error_msg"] = "No se pudo guardar la foto en google drive 😭"
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response["error_msg"])
 
-    bill_tracker_repository = BillTrackerRepository()
-    bill_tracker_repository.authenticate_user(os.getenv('USER_EMAIL'), os.getenv('USER_PASSWORD'))
+    photo_service.upload_image_in_bucket()
 
-    bill = Bill(
-        date=date_now.strftime("%Y-%m-%d %H:%M:%S"),
-        category=None, ## TODO: Obtener el valor de la foto
-        medium=None, ## TODO: Obtener el valor de la foto
-        amount=0, ## TODO: Obtener el valor de la foto
-        status=BillStatus.Unpaid
-    )
+    logger.info("🔍 Analizando foto...")
+    content = photo_service.get_analysis_photo(photo_service.create_thread_with_image())
+    logger.info(content)
 
-    bill_tracker_repository.insert_bill(bill)
+    try:
+        photo_service.save_analysis_photo(content)
+    except Exception as e:
+        logger.error("Error al guardar la factura: %s", str(e))
+        response["error"] = True
+        response["error_msg"] = "No se pudo guardar la factura 😭"
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response["error_msg"])
 
-    response = "Ya guardamos la foto!! 🥳"
-    ## Analizar con AI
-    ## Obtener los valores que vamos a guardar en dbfile_id
-    ## Guardar en base de datos
-    ## Enviar notificacion por correo - opcional
-    ## Devolver respuesta al usuario
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+    response["msg"] = "Ya guardamos la foto!! 🥳"
+
+    execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+    logger.info("Ya guardamos la foto!! 🥳 | Execution time: %.2f ms", execution_time_ms)
+
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response["msg"])
 
 async def echo_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle voice messages sent by users."""

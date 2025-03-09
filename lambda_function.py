@@ -7,7 +7,7 @@ import os
 import traceback
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
-from services.handlers import echo_document, echo_photo, echo_text, echo_voice, start
+from services.handlers import echo_document, echo_text, echo_voice, process_photo, start
 from utils.utils import load_env, validate_event
 
 logger = logging.getLogger()
@@ -36,7 +36,7 @@ async def main(event, context = None):
         ## Add handlers
         application.add_handler(CommandHandler('start', start))
         application.add_handler(MessageHandler(filters.TEXT, echo_text))
-        application.add_handler(MessageHandler(filters.PHOTO, echo_photo))
+        application.add_handler(MessageHandler(filters.PHOTO, process_photo))
         application.add_handler(MessageHandler(filters.Document.IMAGE, echo_document))
         application.add_handler(MessageHandler(filters.VOICE, echo_voice))
 

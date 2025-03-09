@@ -27,9 +27,9 @@ def validate_event(event):
     if not event_chat_id:
         raise ValueError({ "message": "Chat ID is required", "statusCode": 401 })
 
-    chat_ids = os.getenv("CHAT_IDS", {})
+    chat_ids = os.getenv("CHAT_IDS", '[]')
 
     if str(event_chat_id) not in chat_ids:
-        raise Exception({ "message": "Chat ID is not allowed", "statusCode": 401 })
+        raise PermissionError({ "message": "Chat ID is not allowed", "statusCode": 401 })
 
     return

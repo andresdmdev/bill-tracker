@@ -27,6 +27,7 @@ class BillCategory:
     Ants = "Gastos Hormiga"
     Investment = "Inversion"
     Salary = "Sueldo"
+    Unknown = "Unknown"
 
 class BillMedium:
     """Enum representing the medium of a bill."""
@@ -36,6 +37,7 @@ class BillMedium:
     Deel = "Deel"
     Binance = "Binance"
     Cash = "Cash"
+    Unknown = "Unknown"
 
 class Bill:
     """Class representing a bill."""
@@ -47,18 +49,19 @@ class Bill:
     medium: BillMedium | None
     amount: float
     status: BillStatus = BillStatus.Unpaid
+    notes: str | None
     updated_at: str | None
     updated_by: str | None
     deleted_at: str | None
     deleted_by: str | None
 
-    def __init__(self, date: str | None, category: BillCategory | None, medium: BillMedium | None, amount: float, status: BillStatus) -> None:
+    def __init__(self, date: str | None, category: BillCategory | None, medium: BillMedium | None, amount: float, status: BillStatus, notes: str | None) -> None:
         self.date = date
         self.category = category
         self.medium = medium
         self.amount = amount
         self.status = status
-
+        self.notes = notes
     def to_json_db(self) -> dict:
         """Convert the Bill object to a dictionary representation for database insertion."""
         return {
@@ -68,5 +71,6 @@ class Bill:
           "category": self.category,
           "medium": self.medium,
           "amount": self.amount,
-          "status": self.status
+          "status": self.status,
+          "notes": self.notes
         }
