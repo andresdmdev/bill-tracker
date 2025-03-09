@@ -1,22 +1,17 @@
 """Repository for interacting with the bill tracking database through Supabase API."""
 
 import os
-import sys
 import logging
 from supabase import create_client, Client
 from models.bill import Bill
-from utils.utils import load_env
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class BillTrackerRepository:
     """Repository for interacting with the bill tracking database through Supabase API."""
 
     def __init__(self):
-        load_env()  # Asegurarse de cargar las variables de entorno
         url: str = os.getenv("SUPABASE_URL")
         key: str = os.getenv("SUPABASE_KEY")
 

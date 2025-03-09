@@ -1,11 +1,11 @@
 # Steps to zip
 ## 1 - In zip folder run: pip install --target ./package {Dependencies}
-### Ejem. pip install ./package google-api-python-client google-auth python-telegram-bot openai supabase
+### Ejem. pip install --target ./package google-api-python-client google-auth python-telegram-bot openai supabase python-dotenv
 
 ## 2 - In package folder run: sudo zip -r9 ../function.zip .
 
 ## 3 - In zip folder run: sudo zip -g ./function.zip ../{files and folder of your proyect} ..
-### Ejem. sudo zip -g ./function.zip ../lambda_function.py ../services ../utils
+### Ejem. sudo zip -g ./function.zip ../lambda_function.py ../utils/utils.py ../services/handlers.py ../services/photo_service.py ../repository/bill_tracker_repository.py  ../models/bill.py
 
 
 Last update: 08/03/2025
