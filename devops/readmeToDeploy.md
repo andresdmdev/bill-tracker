@@ -7,6 +7,10 @@
 ## 3 - In zip folder run: sudo zip -g ./function.zip ../{files and folder of your proyect} ..
 ### Ejem. sudo zip -g ./function.zip ../lambda_function.py ../utils/utils.py ../services/handlers.py ../services/photo_service.py ../repository/bill_tracker_repository.py  ../models/bill.py
 
+## 4 - Upload zip file in Amazon S3 Bucket
+### After autenticated
+### Ejem. aws s3 cp function.zip s3://[Bucker Name]/
+
 
 Last update: 08/03/2025
 
@@ -76,3 +80,64 @@ uritemplate              4.1.1
 urllib3                  2.3.0
 websockets               14.2
 yarl                     1.18.3
+
+
+## BUCKET IN AMAZON S3 CONFIGURATION
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowRootAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::[AWS ACCOUNT]:root"
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::[Bucker Name]",
+                "arn:aws:s3:::[Bucker Name]/*"
+            ]
+        },
+        {
+            "Sid": "AllowSpecificUserOrRole",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::[AWS ACCOUNT]:user/[USER NAME]"
+            },
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::[Bucker Name]"
+        },
+        {
+            "Sid": "AllowSpecificUserOrRoleObjects",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::[AWS ACCOUNT]:user/[USER NAME]"
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::[Bucker Name]/*"
+        },
+        {
+            "Sid": "DenyEveryoneElse",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::[Bucker Name]",
+                "arn:aws:s3:::[Bucker Name]/*"
+            ],
+            "Condition": {
+                "StringNotLike": {
+                    "aws:PrincipalArn": [
+                        "arn:aws:iam::[AWS ACCOUNT]:root",
+                        "arn:aws:iam::[AWS ACCOUNT]:user/[USER NAME]"
+                    ]
+                }
+            }
+        }
+    ]
+}
