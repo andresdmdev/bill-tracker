@@ -25,6 +25,8 @@ async def process_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Process and store photos sent by users."""
     start_time = date_now
     logger.info("Procesando foto...")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Procesando foto...")
+
     photo_service = PhotoService()
     last_photo = update.message.photo[len(update.message.photo) - 1]
     response = { "msg": "Procesando foto...", "error": False, "error_msg": None }
@@ -49,16 +51,19 @@ async def process_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     photo_service.upload_image_in_bucket()
 
     logger.info("🔍 Analizando foto...")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="🔍 Analizando foto...")
     content = photo_service.get_analysis_photo(photo_service.create_thread_with_image())
     logger.info(content)
 
     try:
         photo_service.save_analysis_photo(content)
     except Exception as e:
-        logger.error("Error al guardar la factura: %s", str(e))
+        execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+        logger.error("Error al guardar la factura: %s | %s", str(e), execution_time_ms)
         response["error"] = True
         response["error_msg"] = "No se pudo guardar la factura 😭"
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response["error_msg"])
+        return
 
     response["msg"] = "Ya guardamos la foto!! 🥳"
 
