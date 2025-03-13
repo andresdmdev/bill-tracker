@@ -57,6 +57,7 @@ async def process_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     try:
         photo_service.save_analysis_photo(content)
+        photo_service.insert_bill_data_in_sheet_row()
     except Exception as e:
         execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
         logger.error("Error al guardar la factura: %s | %s", str(e), execution_time_ms)

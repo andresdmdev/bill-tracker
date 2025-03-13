@@ -11,6 +11,7 @@ import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+
 from openai import OpenAI
 from models.bill import Bill, BillStatus
 from repository.bill_tracker_repository import BillTrackerRepository
@@ -31,6 +32,7 @@ class PhotoService:
         self.photo_name = ""
         self.photo_url = ""
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.bill: Bill = None
         self.bill_tracker_repository = BillTrackerRepository()
         self.bill_tracker_repository.authenticate_user(os.getenv('USER_EMAIL'), os.getenv('USER_PASSWORD'))
 
@@ -194,7 +196,6 @@ class PhotoService:
 
     def save_analysis_photo(self, content):
         """Save the analysis of the photo."""
-
         if not content:
             logger.error("No se recibió respuesta del asistente.")
             raise ValueError("No se recibió respuesta del asistente.")
@@ -202,17 +203,75 @@ class PhotoService:
         try:
             content = json.loads(content)
 
+            date_string = content.get("DATE", date_now.strftime("%Y-%m-%d %H:%M:%S"))
+
+            try:
+                # Convertir string a datetime
+                date_formatted = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                try:
+                    # Intentar con formato dd/mm/yyyy
+                    date_formatted = datetime.strptime(date_string, "%d/%m/%Y")
+                except ValueError:
+                    # Si falla, usar fecha actual
+                    date_formatted = date_now
+
+            # Calcular fecha límite (2 meses atrás)
+            limit_date = date_now.replace(month=date_now.month - 2)
+
+            # Comparar objetos datetime
+            if date_formatted < limit_date:
+                logger.info("Fecha anterior a 2 meses, usando fecha actual")
+                date_formatted = date_now
+
+            # Convertir a string para el Bill
+            date_string_formatted = date_formatted.strftime("%Y-%m-%d %H:%M:%S")
+
             bill = Bill(
-                date=date_now.strftime("%Y-%m-%d %H:%M:%S"),
-                category=content.get("CATEGORY").lower().capitalize(),
-                medium=content.get("MEDIUM").lower().capitalize(),
-                amount="0",
-                status=BillStatus.Unpaid,
-                notes=content.get("NOTES")
+                date=date_string_formatted,
+                category=content.get("CATEGORY"),
+                medium=content.get("MEDIUM"),
+                amount=float(content.get("AMOUNT", "0").replace(",", ".")),
+                dollar_amount=float(content.get("AMOUNT $", "0").replace(",", ".")),
+                status=BillStatus.translate_status(content.get("STATUS", "Paid")),
+                notes=content.get("NOTES", ""),
             )
 
+            self.bill = bill
             self.bill_tracker_repository.insert_bill(bill)
 
         except Exception as e:
             logger.error("Error al guardar la factura: %s", str(e))
             raise ValueError(f"Error al guardar la factura: {str(e)}") from e
+
+    def insert_bill_data_in_sheet_row(self):
+        """Insert the bill data in the sheet row."""
+        try:
+            credentials_json = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_json,
+                scopes=['https://www.googleapis.com/auth/spreadsheets']
+            )
+
+            service = build('sheets', 'v4', credentials=credentials)
+
+            body = {
+                'values': [[self.bill.date, self.bill.category, self.bill.medium, self.bill.amount, self.bill.dollar_amount, BillStatus.translate_status_to_string(self.bill.status), self.bill.notes]]
+            }
+
+            # pylint: disable=maybe-no-member
+            sheet = service.spreadsheets()
+
+            result = sheet.values().append(
+                spreadsheetId=os.getenv('GOOGLE_SHEET_ID'),
+                range=f'{os.getenv("GOOGLE_SHEET_NAME")}!A2:G2',
+                valueInputOption='USER_ENTERED',
+                insertDataOption='INSERT_ROWS',
+                body=body
+            ).execute()
+
+            logger.info("%d cells appended.", result.get('updates').get('updatedCells'))
+
+        except Exception as e:
+            logger.error("Error al ingresar datos a Google Sheets: %s", str(e))
+            raise IOError(f"Error al ingresar datos a Google Sheets: {str(e)}") from e
